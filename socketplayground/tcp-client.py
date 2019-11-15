@@ -1,19 +1,45 @@
 import sys, getopt, socket
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type='])
+    except getopt.GetoptError as err:
+        print(str(err))
+        sys.exit(2)
 
-# try:
-#     opts, args = getopt.getopt(sys.argv[1:4], 's:p:', ['server=', 
+    server = 'localhost'
+    port = 9999
+    nick = 'anonymous'
+    channel = 'idle'
+    msg = 'test message'
+    msg_type = 1
 
-host_ip, server_port = 'mechanicalgarden.online', 9001
-data = sys.argv[1] + ':' + sys.argv[2] + ':' + sys.argv[3]
+    for o, a in opts:
+        if o in ('-s', '--server'):
+            server = a
+        elif o in ('-p', '--port'):
+            port = p
+        elif o in ('-n', '--nick'):
+            nick = a
+        elif o in ('-c', '--channel'):
+            channel = a
+        elif o in ('-m', '--message'):
+            msg = a
+            msg_type = 0
+        elif o in ('-t', '--type'):
+            msg_type = a
 
-tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    data = str(msg_type) + ':' + channel + ':' + msg
 
-try:
-    tcp_client.connect((host_ip, server_port))
-    tcp_client.sendall(data.encode())
-    received = tcp_client.recv(1024)
-finally:
-    tcp_client.close()
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-print('bytes sent: {}'.format(data))
-print('bytes received: {}'.format(received.decode()))
+    try:
+        client.connect((server, port))
+        client.sendall(data.encode('utf-8'))
+        received = client.recv(1024)
+    finally:
+        client.close()
+
+    print(format(received.decode('utf-8')))
+
+if __name__ == '__main__':
+    main()
