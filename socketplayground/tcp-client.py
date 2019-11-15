@@ -27,6 +27,8 @@ def main():
             msg_type = 0
         elif o in ('-t', '--type'):
             msg_type = a
+        else:
+            assert False, 'invalid option {}'.format(o)
 
     data = str(msg_type) + ':' + channel + ':' + msg
 
@@ -36,6 +38,9 @@ def main():
         client.connect((server, port))
         client.sendall(data.encode('utf-8'))
         received = client.recv(1024)
+    except ConnectionRefusedError as err:
+        print('Error: Connection refused. The server requested is not accepting requests at this time.')
+        sys.exit(2)
     finally:
         client.close()
 
