@@ -1,4 +1,4 @@
-#Packet specification
+# Packet specification
 A packet will consist of the following elements:
 ## Section 1: The header
 The packet header include meta information about a message.
