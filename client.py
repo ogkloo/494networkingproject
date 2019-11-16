@@ -1,4 +1,5 @@
 import sys, getopt, socket
+
 def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type='])
@@ -39,7 +40,7 @@ def main():
         client.sendall(data.encode('utf-8'))
         received = client.recv(1024)
     except ConnectionRefusedError as err:
-        print('Error: Connection refused. The server requested is not accepting requests at this time.')
+        print('Error: Connection refused. The server is not accepting requests at this time.')
         sys.exit(2)
     finally:
         client.close()
