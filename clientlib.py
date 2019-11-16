@@ -17,6 +17,9 @@ class Message():
     def __str__(self):
         return self.source + '->' + self.target + ':' + self.text + '\n' + str(self.msg_type) + ',' + str(self.ephemeral) + '->' + str(self.control_byte) + '\n' + self.server + ':' + str(self.port)
 
+    def __repr__(self):
+        return self.source + '->' + self.target + ':' + self.text + '\n' + str(self.msg_type) + ',' + str(self.ephemeral) + '->' + str(self.control_byte) + '\n' + self.server + ':' + str(self.port)
+
     def assemble(self):
         if utf8len(self.source) < 21 and utf8len(self.target) < 21 and utf8len(self.text) < 4000:
             return self.source.encode('utf-8') + self.target.encode('utf-8') + self.control_byte + self.text.encode('utf-8')
