@@ -34,4 +34,6 @@ messages, channel names, etc, as well as provide easy support for utf-8. This is
 important to supporting multilingual text.
 
 # Responses
-Reponses should be kept small. 
+Reponses should be kept small. The client will accept 8 bytes of response. It
+will be the response of the client to figure out what the response means based
+on further specification in this document.
