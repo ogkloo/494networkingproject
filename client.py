@@ -1,8 +1,9 @@
-import sys, getopt, socket
+import sys, getopt
+from clientlib import Message
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type='])
+        opts, args = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:e', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type=', 'ephemeral'])
     except getopt.GetoptError as err:
         print(str(err))
         sys.exit(2)
@@ -13,6 +14,7 @@ def main():
     channel = 'idle'
     msg = 'test message'
     msg_type = 1
+    ephemeral = 0
 
     for o, a in opts:
         if o in ('-s', '--server'):
@@ -28,24 +30,13 @@ def main():
             msg_type = 0
         elif o in ('-t', '--type'):
             msg_type = a
+        elif o in ('-e', '--ephemeral'):
+            ephemeral = 1
         else:
             assert False, 'invalid option {}'.format(o)
 
-    data = str(msg_type) + ':' + channel + ':' + msg
-
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    try:
-        client.connect((server, port))
-        client.sendall(data.encode('utf-8'))
-        received = client.recv(1024)
-    except ConnectionRefusedError as err:
-        print('Error: Connection refused. The server is not accepting requests at this time.')
-        sys.exit(2)
-    finally:
-        client.close()
-
-    print(format(received.decode('utf-8')))
+    data = Message(nick, channel, msg_type, ephemeral, msg, server, port)
+    data.send()
 
 if __name__ == '__main__':
     main()

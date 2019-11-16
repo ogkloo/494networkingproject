@@ -1,4 +1,9 @@
 import socketserver
+from clientlib import Message
+
+# TODO: Redo this to work with the Message class instead of directly reading packets.
+# Also, we should read packets correctly, as they're no longer formed randomly and
+# badly.
 
 class Channel():
     def add_message(self, msg):
