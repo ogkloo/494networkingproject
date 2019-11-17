@@ -4,9 +4,12 @@ Making other test scripts is fine, but please call them from here so that this r
 all tests that can be run quickly.
 '''
 
-from clientlib import Message
+from message import Message
 
+# Message tests
 msg = Message('anonymous', 'example', 2, 1, 'some message here', 'localhost', 9999)
+
+# Assembly to packet from Message object
 try:
     assert(msg.assemble() == b'anonymous\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00example\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x12some message here')
 except AssertionError as err:
@@ -14,11 +17,7 @@ except AssertionError as err:
 else:
     print('Message assembly test... passed.')
 
-
-# TODO: Define equality on Message.
-# NOTE: Should not check for Message.server nor Message.port, as those are not preserved
-# print(Message.from_packet(msg.assemble()))
-# print(msg)
+# Reassembly to Message object from packet
 try:
     assert(Message.from_packet(msg.assemble()) == msg)
 except AssertionError as err:
