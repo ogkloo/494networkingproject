@@ -33,7 +33,46 @@ These are specifically chosen to be large values to accomodate both long nicks,
 messages, channel names, etc, as well as provide easy support for utf-8. This is
 important to supporting multilingual text.
 
+# Message types
+## 0 / Join channel
+Adds nick to the list of listening nicks for a certain channel. This means the
+client is "logged in".
+
+## 1 / Send message to channel
+Sends a message to a certain channel. These messages ignore ephemeral settings,
+although the server will inform the client in the response code if the channel
+is considered ephemeral.
+
+## 2 / Create channel
+Creates a public, non-ephemeral channel.
+
+## 3 / Create ephemeral channel
+Creates a "private" chat. Technically, anyone can join, but it will not be
+included in list requests (see type 12) and the channel will be deleted when
+all users in the channel sign off.
+
+## 4 / Send message to user
+Specifies that the target field of the message is a user and not a channel.
+The server should deliver the message to only the specified user. This message
+type respects the ephemeral field.
+
+## 12 / List channels
+Lists all public channels on the server. Should not list ephemeral channels
+(see message type 3). This response may be very large.
+
+## 13 / List users
+Lists all users who are currently joined to at least one channel.
+
+## 15 / Part
+The target field of a message should be interpreted as the channel to remove
+the source user from.
+
 # Responses
 Reponses should be kept small. The client will accept 8 bytes of response. It
 will be the response of the client to figure out what the response means based
 on further specification in this document.
+
+## Section 1: Reponse codes
+### 0: Error, bad message type / bad msg\_type file
+If the message type field does not match any of the types the server is capable
+of recognizing.
