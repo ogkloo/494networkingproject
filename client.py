@@ -1,5 +1,5 @@
 import sys, getopt
-from clientlib import Message
+from message import Message
 
 def main():
     try:
