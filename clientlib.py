@@ -14,6 +14,11 @@ class Message():
         self.port = port
         self.control_byte = (self.ephemeral << 4 | self.msg_type).to_bytes(1, 'little')
 
+    def __eq__(self, msg):
+        metadata = self.source == msg.source and self.target == msg.target and self.msg_type == msg.msg_type and self.ephemeral == msg.ephemeral
+        text = self.text == msg.text
+        return metadata and text
+
     def from_packet(packet):
         msg = Message()
         msg.source = packet[0:21].decode('utf-8').strip('\0')
@@ -24,7 +29,7 @@ class Message():
         # This is done mostly to make the output pretty but is really rather irrelevant
         # Python needs some pushing to do this nicely
         msg.control_byte = (msg.ephemeral << 4 | msg.msg_type).to_bytes(1, 'little')
-        msg.text = packet[42:].decode('utf-8')
+        msg.text = packet[43:].decode('utf-8')
         # These are irrelevant to do bookkeeping for
         msg.server = ''
         msg.port = 0

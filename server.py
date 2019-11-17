@@ -42,6 +42,10 @@ class Server():
         self.channels = {}
 
 class HandleTCPServer(socketserver.BaseRequestHandler):
+    def respond_to_message(self, packet):
+        # Parse packet
+        msg = Message.from_packet(packet)
+
     def respond(self, *packet):
         print('responding to packet')
         packet = packet[0]
