@@ -73,6 +73,6 @@ will be the response of the client to figure out what the response means based
 on further specification in this document.
 
 ## Section 1: Reponse codes
-### 0: Error, bad message type / bad msg\_type file
-If the message type field does not match any of the types the server is capable
-of recognizing.
+1. asd
+2. asd
+2. asd

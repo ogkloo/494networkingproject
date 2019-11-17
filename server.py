@@ -17,10 +17,11 @@ class Channel():
         self.messages = []
 
 class Server(socketserver.BaseRequestHandler):
-    def __init__(self, host, port):
+    def setup(self):
         '''
         Nicks that are registered for the server. May or may not be online.
         Online nicks will be added when the notion of session is supported.
+        Not sure this one works actually
         '''
         self.nicks = set()
         self.channels = {}
@@ -54,8 +55,10 @@ class Server(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.data = self.request.recv(4096)
-        print("{} sent: ".format(self.client_address[0]))
-        msg = Message.from_packet(self.data.decode('utf-8'))
+        print(self.data)
+        # print("{}:{} sent: ".format(self.client_address[0], self.client_address[1]))
+        msg = Message.from_packet(self.data)
+        print(msg)
 
 if __name__ == '__main__':
     host, port = sys.argv[1], int(sys.argv[2])

@@ -20,7 +20,7 @@ def main():
         if o in ('-s', '--server'):
             server = a
         elif o in ('-p', '--port'):
-            port = p
+            port = int(a)
         elif o in ('-n', '--nick'):
             nick = a
         elif o in ('-c', '--channel'):
@@ -29,7 +29,7 @@ def main():
             msg = a
             msg_type = 0
         elif o in ('-t', '--type'):
-            msg_type = a
+            msg_type = int(a)
         elif o in ('-e', '--ephemeral'):
             ephemeral = 1
         else:
