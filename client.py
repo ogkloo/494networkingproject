@@ -12,7 +12,7 @@ def main():
     port = 9999
     nick = 'anonymous'
     channel = 'idle'
-    msg = 'test message'
+    msg = ''
     msg_type = 1
     ephemeral = 0
 
@@ -27,7 +27,7 @@ def main():
             channel = a
         elif o in ('-m', '--message'):
             msg = a
-            msg_type = 0
+            msg_type = 1
         elif o in ('-t', '--type'):
             msg_type = int(a)
         elif o in ('-e', '--ephemeral'):

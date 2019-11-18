@@ -73,6 +73,12 @@ will be the response of the client to figure out what the response means based
 on further specification in this document.
 
 ## Section 1: Reponse codes
-1. asd
-2. asd
-2. asd
+
+### Introduction
+Responses are 32 bits in length, with a few exceptions. For the most part,
+responses communicate simple success or failure for some specific action.
+
+#### 0x00000000 - 0x0000ffff: Errors
+* 0x00000000: Failure to join channel
+
+#### 0x00010000 - 0xffffffff: Other responses

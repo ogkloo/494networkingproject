@@ -43,7 +43,7 @@ class Message():
         return msg
 
     def __str__(self):
-        return self.source + '->' + self.target + ':' + self.text + '\n' + str(self.msg_type) + ',' + str(self.ephemeral) + '->' + str(self.control_byte) + '\n' + self.server + ':' + str(self.port)
+        return self.source + '>' + self.target + ':' + self.text + '/' + str(self.msg_type) + ',' + str(self.ephemeral) + '|' + str(self.control_byte) + '/' + self.server + ':' + str(self.port)
 
     def __repr__(self):
         return self.source + '->' + self.target + ':' + self.text + '\n' + str(self.msg_type) + ',' + str(self.ephemeral) + '->' + str(self.control_byte) + '\n' + self.server + ':' + str(self.port)
@@ -82,7 +82,7 @@ class Message():
             client.connect((self.server, self.port))
             client.sendall(self.assemble())
             response = client.recv(8)
-            print(response.decode('utf-8'))
+            print(int.from_bytes(response, byteorder='little'))
         except ConnectionRefusedError as err:
             print('Error: Connection refused.')
         finally:
