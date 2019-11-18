@@ -61,7 +61,7 @@ class Server():
                 return True
             else:
                 request.sendall(0x00000002.to_bytes(4, 'little'))
-                print('{} failed to join channel #{}: Channel does not exist'.format(msg.source, msg.target))
+                print('{} failed to create channel #{}: Channel already exists'.format(msg.source, msg.target))
                 return False
         elif msg.msgtype == 2:
             pass
