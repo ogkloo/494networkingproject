@@ -78,11 +78,11 @@ on further specification in this document.
 Responses are 32 bits in length, with a few exceptions. For the most part,
 responses communicate simple success or failure for some specific action.
 
-#### 0x00000000 - 0x0000ffff: Errors
+#### `0x00000000` - `0x0000ffff`: Errors
 * 0: Unidentified failure
 * 1: Failure to join channel, channel does not exist
 * 2: Failed to create channel, channel already exists
 
-#### 0x00010000 - 0xffffffff: Successes and other responses
+#### `0x00010000` - `0xffffffff`: Successes and other responses
 * 4096: Join channel successful 
 * 4097: Create channel successful

@@ -35,8 +35,15 @@ def main():
         else:
             assert False, 'invalid option {}'.format(o)
 
+    # Use message API to send, handle errors in the process
     data = Message(nick, channel, msg_type, ephemeral, msg, server, port)
-    data.send()
+    try:
+        response = data.send()
+    except ConnectionRefusedError:
+        print('Connection failed: Connection refused.')
+        sys.exit(2)
+    finally:
+        print(response)
 
 if __name__ == '__main__':
     main()

@@ -76,14 +76,13 @@ class Message():
         '''
         Client-side message sending. Handles all the socket heavy lifting. Intended to be a VERY simple API.
         This actually also enables bots to be built pretty easily I think, which is kinda cool.
+        Throws ConnectionRefusedError
         '''
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             client.connect((self.server, self.port))
             client.sendall(self.assemble())
             response = client.recv(8)
-            print(int.from_bytes(response, byteorder='little'))
-        except ConnectionRefusedError as err:
-            print('Error: Connection refused.')
+            return int.from_bytes(response, byteorder='little')
         finally:
             client.close()
