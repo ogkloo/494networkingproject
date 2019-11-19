@@ -17,12 +17,11 @@ class Message():
     def __eq__(self, msg):
         '''
         Important note: This does not compare target server and port, as those are not preserved in the packet.
-        It would be pointless to keep track of for anything other than this, and so it was not included in this
-        function. It might be worth changing this function? Not sure.
         '''
-        metadata = self.source == msg.source and self.target == msg.target and self.msg_type == msg.msg_type and self.ephemeral == msg.ephemeral
+        routing = self.source == msg.source and self.target == msg.target
+        control = self.msg_type == msg.msg_type and self.ephemeral == msg.ephemeral
         text = self.text == msg.text
-        return metadata and text
+        return routing and control and text
 
     def from_packet(packet):
         '''
