@@ -33,6 +33,9 @@ def main():
         elif o in ('-e', '--ephemeral'):
             ephemeral = 1
         else:
+            """ 
+            Is it a better solution to throw an expection?
+            """
             assert False, 'invalid option {}'.format(o)
 
     # Use message API to send, handle errors in the process
