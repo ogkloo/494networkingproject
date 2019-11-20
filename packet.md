@@ -80,9 +80,11 @@ responses communicate simple success or failure for some specific action.
 
 #### `0x00000000` - `0x0000ffff`: Errors
 * 0: Unidentified failure
-* 1: Failure to join channel, channel does not exist
-* 2: Failed to create channel, channel already exists
+* 1: Failure to join channel, channel does not exist.
+* 2: Failed to send message, channel does not exist.
+* 3: Failed to create channel, channel already exists.
 
 #### `0x00010000` - `0xffffffff`: Successes and other responses
 * 4096: Join channel successful 
-* 4097: Create channel successful
+* 4097: Send message successful
+* 4098: Create channel successful

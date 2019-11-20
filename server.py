@@ -16,7 +16,7 @@ class Server():
     '''
     Overall state of the server at a given time.
     '''
-    def join_nick_to_channel(self, nick, channel):
+    def join_channel(self, nick, channel):
         if channel in self.channels:
             self.channels[channel].nicks.add(nick)
             return True
@@ -44,29 +44,42 @@ class Server():
     def respond(self, msg, request):
         # Join nick to a certain channel
         if msg.msg_type == 0:
-            if self.join_nick_to_channel(msg.source, msg.target):
-                request.sendall(0x00010000.to_bytes(4, 'little'))
+            if self.join_channel(msg.source, msg.target):
+                # Send response code 4096: Join channel successful 
+                request.sendall((4096).to_bytes(4, 'little'))
                 print('{} joined #{}'.format(msg.source, msg.target))
                 return True
             else:
-                request.sendall(0x00000001.to_bytes(4, 'little'))
+                request.sendall((1).to_bytes(4, 'little'))
                 print('{} failed to join #{}: Channel does not exist'.format(msg.source, msg.target))
                 return False
-        # Create channel -- "Fails" if the channel already exists
+        # Send message to channel. Fails if channel does not exist.
         elif msg.msg_type == 1:
+            if self.send_message(msg.target, msg):
+                # Send response code 4097: Message send successful 
+                request.sendall((4097).to_bytes(4, 'little'))
+                localtime = time.asctime(time.localtime(time.time()))
+                msg.time_stamp = localtime 
+                print('<{}> {} sent to #{}: {}'.format(msg.time_stamp, msg.source, msg.target, msg.text))
+                return True
+            else:
+                request.sendall((2).to_bytes(4, 'little'))
+                print('{} failed to create channel #{}: Channel already exists'.format(msg.source, msg.target))
+                return False
+        # Create channel. Fails if the channel already exists
+        elif msg.msg_type == 2:
             if self.add_channel(msg.target):
-                request.sendall(0x00010001.to_bytes(4, 'little'))
+                # Send response code 4098: Create channel successful 
+                request.sendall((4098).to_bytes(4, 'little'))
                 localtime = time.asctime(time.localtime(time.time()))
                 print('{} created channel #{} at {}'.format(msg.source, msg.target, localtime))
                 return True
             else:
-                request.sendall(0x00000002.to_bytes(4, 'little'))
+                request.sendall((3).to_bytes(4, 'little'))
                 print('{} failed to create channel #{}: Channel already exists'.format(msg.source, msg.target))
                 return False
-        elif msg.msgtype == 2:
-            pass
         else:
-            err = (0).to_bytes(0, 'little')
+            err = (0).to_bytes(1, 'little')
             self.request.sendall(err)
 
 class RequestHandler(socketserver.BaseRequestHandler):
