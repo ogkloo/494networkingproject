@@ -5,12 +5,13 @@ class Channel():
     def add_message(self, msg):
         self.messages.append(msg)
 
-    def __init__(self, name):
+    def __init__(self, name, ephemeral):
         # Channel identifier
         self.name = name
         # Nicks listening for updates on this channel
-        self.nicks = set()
+        self.nicks = {}
         self.messages = []
+        self.ephemeral = ephemeral
     
 class Server():
     '''
@@ -18,18 +19,23 @@ class Server():
     '''
     def join_channel(self, nick, channel):
         if channel in self.channels:
-            self.channels[channel].nicks.add(nick)
+            localtime = time.asctime(time.localtime(time.time()))
+            self.channels[channel].nicks[nick] = localtime
             return True
         else:
             return False
 
     def __init__(self):
-        self.channels = {'idle': Channel('idle')}
-        self.nicks = set()
+        # Channels on the server
+        self.channels = {'idle': Channel('idle', False)}
+        # Map of nicks to messages waiting for that user.
+        self.user_messages = {}
+        # Map of nicks to the last time they sent a get_messages request
+        self.nicks = {}
 
-    def add_channel(self, name):
+    def add_channel(self, name, ephemeral):
         if name not in self.channels:
-            self.channels[name] = Channel(name)
+            self.channels[name] = Channel(name, ephemeral)
             return True
         else:
             return False
@@ -40,6 +46,9 @@ class Server():
         else:
             self.channels[channel].add_message(msg)
             return True
+
+    def get_messages(self, msg, request):
+        raise NotImplementedError('failed: get_message unimplemented') 
 
     def respond(self, msg, request):
         # Join nick to a certain channel
@@ -77,6 +86,17 @@ class Server():
             else:
                 request.sendall((3).to_bytes(4, 'little'))
                 print('{} failed to create channel #{}: Channel already exists'.format(msg.source, msg.target))
+                return False
+        # Create ephemeral channel. Fails if the channel exists.
+        elif msg.msg_type == 3:
+            if self.add_channel(msg.target, True):
+                request.sendall((4099).to_bytes(4, 'little'))
+                localtime = time.asctime(time.localtime(time.time()))
+                print('{} created ephemeral channel #{} at {}'.format(msg.source, msg.target, localtime))
+                return True
+            else:
+                request.sendall((4).to_bytes(4, 'little'))
+                print('{} failed to create ephemeral channel #{}: Channel already exists'.format(msg.source, msg.target))
                 return False
         else:
             err = (0).to_bytes(1, 'little')

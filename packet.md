@@ -56,6 +56,13 @@ Specifies that the target field of the message is a user and not a channel.
 The server should deliver the message to only the specified user. This message
 type respects the ephemeral field.
 
+## 5 / Get messages
+Get all messages from the last time the user checked. If the text field includes
+a string of the form "Tue May 08 15:14:45 +0800 2012", it should be interpreted
+as the time to get messages from. This allows a user to request the history of
+a channel, even if they just joined, which facilitates usage across multiple
+devices.
+
 ## 12 / List channels
 Lists all public channels on the server. Should not list ephemeral channels
 (see message type 3). This response may be very large.
