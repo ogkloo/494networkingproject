@@ -1,4 +1,4 @@
-import socketserver, sys, time
+import socketserver, time
 from message import Message
 
 def now():
@@ -16,7 +16,7 @@ class Channel():
         self.messages = []
         self.ephemeral = ephemeral
     
-class Server():
+class ChatState():
     '''
     Overall state of the server at a given time.
     '''
@@ -133,18 +133,19 @@ class Server():
             err = (0).to_bytes(1, 'little')
             self.request.sendall(err)
 
+# To eventually be replaced by a threading version
 class RequestHandler(socketserver.BaseRequestHandler):
-    '''
-    Redirects a request to a specified server.
-    '''
     def handle(self):
         self.data = self.request.recv(4096)
         msg = Message.from_packet(self.data)
         print("{}:{} sent: {}".format(self.client_address[0], self.client_address[1], str(msg)))
-        server.respond(msg, self.request)
+        self.server.responder.respond(msg, self.request)
 
-if __name__ == '__main__':
-    server = Server()
-    host, port = sys.argv[1], int(sys.argv[2])
-    socket_server = socketserver.TCPServer((host, port), RequestHandler)
-    socket_server.serve_forever()
+class Server():
+    def __init__(self, host, port):
+        self.responder = ChatState()
+        self.socket_server = socketserver.TCPServer((host, port), RequestHandler)
+        self.socket_server.responder = self.responder
+
+    def serve_forever(self):
+        self.socket_server.serve_forever()
