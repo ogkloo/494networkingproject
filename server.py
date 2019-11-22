@@ -29,6 +29,14 @@ class Server():
         self.nicks = {}
 
     def join_channel(self, nick, channel):
+        '''
+        We must add to the nicks list, but we don't want to send all messages
+        yet. Or maybe we do? Joining a channel probably shouldn't pull down
+        the entire message history, but instead allow the client the option
+        of doing this by issuing a get messages request.
+        '''
+        if nick not in self.nicks:
+            self.nicks[nick] = None
         if channel in self.channels:
             self.channels[channel].nicks[nick] = now()
             return True
@@ -52,13 +60,16 @@ class Server():
     def get_messages(self, msg, request):
         raise NotImplementedError('failed: get_message unimplemented') 
 
-    # Cannot fail
-    def send_message_to_user(target, msg):
-        if target not in self.user_messages:
+    # Fail if user does not exist (ie is not in known nicks)
+    def send_message_to_user(self, target, msg):
+        if target not in self.nicks:
+            return False
+        elif target not in self.user_messages:
             self.user_messages[target] = []
         msg.time_stamp = now()
         self.user_messages[target].append(msg)
         self.nicks[msg.source] = msg.time_stamp
+        return True
 
     def respond(self, msg, request):
         # Join nick to a certain channel
@@ -86,7 +97,7 @@ class Server():
                 return False
         # Create channel. Fails if the channel already exists
         elif msg.msg_type == 2:
-            if self.add_channel(msg.target):
+            if self.add_channel(msg.target, False):
                 # Send response code 4098: Create channel successful 
                 request.sendall((4098).to_bytes(4, 'little'))
                 print('{} created channel #{} at {}'.format(msg.source, msg.target, now()))
@@ -107,8 +118,17 @@ class Server():
                 return False
         # Send private messages among users
         elif msg.msg_type == 4:
+            print(self.nicks)
             if self.send_message_to_user(msg.target, msg):
-                pass
+                request.sendall((4100).to_bytes(4, 'little'))
+                print('Message was sent at {}'.format(now()))
+                return True
+            else:
+                request.sendall((5).to_bytes(4, 'little'))
+                print('Message failed: Sent to non-existent user at {}'.format(now()))
+                return False
+        elif msg.msg_type == 5:
+            self.get_messages(msg, self.request)
         else:
             err = (0).to_bytes(1, 'little')
             self.request.sendall(err)

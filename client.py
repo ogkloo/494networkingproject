@@ -27,7 +27,6 @@ def main():
             channel = a
         elif o in ('-m', '--message'):
             msg = a
-            msg_type = 1
         elif o in ('-t', '--type'):
             msg_type = int(a)
         elif o in ('-e', '--ephemeral'):
@@ -42,8 +41,7 @@ def main():
     except ConnectionRefusedError:
         print('Connection failed: Connection refused.')
         sys.exit(2)
-    finally:
-        print(response)
+    print(response)
 
 if __name__ == '__main__':
     main()
