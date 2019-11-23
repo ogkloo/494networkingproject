@@ -1,21 +1,26 @@
 import socketserver, time
+from datetime import datetime
 from message import Message
-
-def now():
-    return time.asctime(time.localtime(time.time()))
-
+ 
 class Channel():
-    def add_message(self, msg):
-        self.messages.append(msg)
-
     def __init__(self, name, ephemeral):
         # Channel identifier
         self.name = name
         # Nicks listening for updates on this channel
         self.nicks = {}
-        self.messages = []
+        self.messages = {}
         self.ephemeral = ephemeral
+
+    def __str__(self):
+        return self.name + ',' + str(self.ephemeral) + ',' + str(self.nicks) + ',' + str(self.messages)
     
+    def add_message(self, msg):
+        self.messages[msg.time_stamp] = msg
+
+    # Have never checked for updates here before
+    def join(self, nick):
+        self.nicks[nick] = None
+
 class ChatState():
     '''
     Overall state of the server at a given time.
@@ -28,6 +33,10 @@ class ChatState():
         # Map of nicks to the last time they sent a get_messages request
         self.nicks = {}
 
+    def dump_channels(self):
+        for (name, info) in self.channels.items():
+            print(info)
+
     def join_channel(self, nick, channel):
         '''
         We must add to the nicks list, but we don't want to send all messages
@@ -38,7 +47,7 @@ class ChatState():
         if nick not in self.nicks:
             self.nicks[nick] = None
         if channel in self.channels:
-            self.channels[channel].nicks[nick] = now()
+            self.channels[channel].join(nick)
             return True
         else:
             return False
@@ -54,11 +63,22 @@ class ChatState():
         if channel not in self.channels:
             return False
         else:
+            msg.time_stamp = datetime.now()
             self.channels[channel].add_message(msg)
             return True
 
-    def get_messages(self, msg, request):
-        raise NotImplementedError('failed: get_message unimplemented') 
+    # https://stackoverflow.com/questions/18807079/selecting-elements-of-a-python-dictionary-greater-than-a-certain-value
+    # https://dateutil.readthedocs.io/en/stable/examples.html
+    def get_messages(self, since, nick, channel):
+        # If the user has never logged in before, fail.
+        if msg.source not in self.channels:
+            return False
+        # We do not need to send requests after this, as this message will send the request.
+        else:
+            self.nicks[msg.source] = datetime.now()
+            request_time = datetime.now()
+            old_messages = dict((k,v) for k,v in self.channels[msg.target].messages.items() if k > request_time)
+            return True
 
     # Fail if user does not exist (ie is not in known nicks)
     def send_message_to_user(self, target, msg):
@@ -66,9 +86,8 @@ class ChatState():
             return False
         elif target not in self.user_messages:
             self.user_messages[target] = []
-        msg.time_stamp = now()
+        msg.time_stamp = datetime.now()
         self.user_messages[target].append(msg)
-        self.nicks[msg.source] = msg.time_stamp
         return True
 
     def respond(self, msg, request):
@@ -88,7 +107,6 @@ class ChatState():
             if self.send_message(msg.target, msg):
                 # Send response code 4097: Message send successful 
                 request.sendall((4097).to_bytes(4, 'little'))
-                msg.time_stamp = now()
                 print('<{}> {} sent to #{}: {}'.format(msg.time_stamp, msg.source, msg.target, msg.text))
                 return True
             else:
@@ -100,7 +118,7 @@ class ChatState():
             if self.add_channel(msg.target, False):
                 # Send response code 4098: Create channel successful 
                 request.sendall((4098).to_bytes(4, 'little'))
-                print('{} created channel #{} at {}'.format(msg.source, msg.target, now()))
+                print('{} created channel #{} at {}'.format(msg.source, msg.target, datetime.now()))
                 return True
             else:
                 request.sendall((3).to_bytes(4, 'little'))
@@ -110,7 +128,7 @@ class ChatState():
         elif msg.msg_type == 3:
             if self.add_channel(msg.target, True):
                 request.sendall((4099).to_bytes(4, 'little'))
-                print('{} created ephemeral channel #{} at {}'.format(msg.source, msg.target, now()))
+                print('{} created ephemeral channel #{} at {}'.format(msg.source, msg.target, datetime.now()))
                 return True
             else:
                 request.sendall((4).to_bytes(4, 'little'))
@@ -121,14 +139,15 @@ class ChatState():
             print(self.nicks)
             if self.send_message_to_user(msg.target, msg):
                 request.sendall((4100).to_bytes(4, 'little'))
-                print('Message was sent at {}'.format(now()))
+                print('Message was sent at {}'.format(datetime.now()))
                 return True
             else:
                 request.sendall((5).to_bytes(4, 'little'))
-                print('Message failed: Sent to non-existent user at {}'.format(now()))
+                print('Message failed: Sent to non-existent user at {}'.format(datetime.now()))
                 return False
         elif msg.msg_type == 5:
-            self.get_messages(msg, self.request)
+            # self.get_messages(msg, self.request)
+            pass
         else:
             err = (0).to_bytes(1, 'little')
             self.request.sendall(err)

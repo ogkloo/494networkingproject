@@ -5,22 +5,60 @@ all tests that can be run quickly.
 '''
 
 from message import Message
+from datetime import datetime
+from server import Channel, ChatState, Server
+from os import fork, waitpid, kill
+from time import sleep
+import signal
+import sys
+
+def format_test(name, assertion):
+    try:
+        assert(assertion)
+    except AssertionError:
+        print(name + '... failed.')
+    else:
+        print(name + '... passed.')
 
 # Message tests
 msg = Message('anonymous', 'example', 2, 1, 'some message here', 'localhost', 9999)
+msg.time_stamp = datetime.now()
 
 # Assembly to packet from Message object
-try:
-    assert(msg.assemble() == b'anonymous\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00example\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x12some message here')
-except AssertionError as err:
-    print('Message assembly test... failed.')
-else:
-    print('Message assembly test... passed.')
+format_test('Message assembly', (msg.assemble() == b'anonymous\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00example\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x12some message here'))
+format_test('Message reassembly', (Message.from_packet(msg.assemble()) == msg))
 
-# Reassembly to Message object from packet
+channel = Channel('idle', False)
+channel.join(msg.source)
+channel.add_message(msg)
+
+test_server = ChatState()
+format_test('Join extant channel', (test_server.join_channel('test_user', 'idle') == True))
+format_test('Prevent creating channels implicitly', (test_server.join_channel('test_user', 'rice') == False))
+format_test('Create channel', (test_server.add_channel('test_channel', False) == True))
+format_test('Join new channel', test_server.join_channel('anon', 'test_channel') == True)
+format_test('Join new channel', test_server.join_channel('anon2', 'test_channel') == True)
+format_test('Join new channel', test_server.join_channel('anon3', 'test_channel') == True)
+format_test('Join new channel', test_server.join_channel('anon4', 'test_channel') == True)
+format_test('Join new channel', test_server.join_channel('anon5', 'test_channel') == True)
+test_server.dump_channels()
+
 try:
-    assert(Message.from_packet(msg.assemble()) == msg)
-except AssertionError as err:
-    print('Message reassembly test... failed.')
+    port = int(sys.argv[1])
+    pid = fork()
+except OSError as err:
+    print('Fork failed: {}'.format(err))
+
+if pid == 0:
+    server = Server('localhost', port)
+    server.serve_forever()
 else:
-    print('Message reassembly test... passed.')
+    msg = Message('anon', 'example', 2, 1, 'some message here', 'localhost', port)
+    sleep(0.1)
+    try:
+        response = msg.send()
+        kill(pid, signal.SIGTERM)
+        print(response)
+    except ConnectionRefusedError:
+        print('Server failed to start')
+        sys.exit(2)
