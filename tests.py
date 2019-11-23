@@ -16,9 +16,9 @@ def format_test(name, assertion):
     try:
         assert(assertion)
     except AssertionError:
-        print(name + '... failed.')
+        print('Failed: ' + name)
     else:
-        print(name + '... passed.')
+        print('Passed: ' + name) 
 
 # Message tests
 msg = Message('anonymous', 'example', 2, 1, 'some message here', 'localhost', 9999)
@@ -37,11 +37,6 @@ format_test('Join extant channel', (test_server.join_channel('test_user', 'idle'
 format_test('Prevent creating channels implicitly', (test_server.join_channel('test_user', 'rice') == False))
 format_test('Create channel', (test_server.add_channel('test_channel', False) == True))
 format_test('Join new channel', test_server.join_channel('anon', 'test_channel') == True)
-format_test('Join new channel', test_server.join_channel('anon2', 'test_channel') == True)
-format_test('Join new channel', test_server.join_channel('anon3', 'test_channel') == True)
-format_test('Join new channel', test_server.join_channel('anon4', 'test_channel') == True)
-format_test('Join new channel', test_server.join_channel('anon5', 'test_channel') == True)
-test_server.dump_channels()
 
 try:
     port = int(sys.argv[1])
