@@ -51,14 +51,15 @@ except OSError as err:
 
 if pid == 0:
     server = Server('localhost', port)
+    sys.stdout = open('/dev/null', 'w')
     server.serve_forever()
 else:
     msg = Message('anon', 'example', 2, 1, 'some message here', 'localhost', port)
     sleep(0.1)
     try:
-        response = msg.send()
+        response = int(msg.send())
         kill(pid, signal.SIGTERM)
-        print(response)
+        format_test('Server default message test', response == 4098)
     except ConnectionRefusedError:
         print('Server failed to start')
         sys.exit(2)
