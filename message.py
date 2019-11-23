@@ -4,7 +4,7 @@ def utf8len(s):
     return len(s.encode('utf-8'))
 
 class Message():
-    def __init__(self, source='', target='', msg_type=1, ephemeral=1, text='', server='', port=0):
+    def __init__(self, source='', target='', msg_type=1, ephemeral=False, text='', server='', port=0):
         self.source = source
         self.target = target
         self.msg_type = msg_type

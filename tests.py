@@ -21,7 +21,7 @@ def format_test(name, assertion):
         print('Passed: ' + name) 
 
 # Message tests
-msg = Message('anonymous', 'example', 2, 1, 'some message here', 'localhost', 9999)
+msg = Message('anonymous', 'example', 2, False, 'some message here', 'localhost', 9999)
 msg.time_stamp = datetime.now()
 
 # Assembly to packet from Message object
@@ -49,12 +49,12 @@ if pid == 0:
     sys.stdout = open('/dev/null', 'w')
     server.serve_forever()
 else:
-    msg = Message('anon', 'example', 2, 1, 'some message here', 'localhost', port)
+    msg = Message('anon', 'example', 2, False, 'some message here', 'localhost', port)
     sleep(0.1)
     try:
         response = int(msg.send())
         kill(pid, signal.SIGTERM)
         format_test('Server default message test', response == 4098)
     except ConnectionRefusedError:
-        print('Server failed to start')
+        print('Failed: Server failed to start')
         sys.exit(2)
