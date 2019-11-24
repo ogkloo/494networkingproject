@@ -1,4 +1,5 @@
 import socket
+from datetime import datetime
 
 def utf8len(s):
     return len(s.encode('utf-8'))
@@ -12,6 +13,7 @@ class Message():
         self.text = text
         self.server = server
         self.port = port
+        self.time_stamp = datetime.now()
         self.control_byte = (self.ephemeral << 4 | self.msg_type).to_bytes(1, 'little')
 
     def __eq__(self, msg):
@@ -70,7 +72,6 @@ class Message():
         else:
             raise RuntimeError('Message too long. Reduce to under 4000 characters.')
 
-
     def send(self):
         '''
         Client-side message sending. Handles all the socket heavy lifting. Intended to be a VERY simple API.
@@ -82,6 +83,6 @@ class Message():
             client.connect((self.server, self.port))
             client.sendall(self.assemble())
             response = client.recv(8)
-            return int.from_bytes(response, byteorder='little')
+            return response
         finally:
             client.close()

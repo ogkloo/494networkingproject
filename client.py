@@ -14,7 +14,7 @@ def main():
     channel = 'idle'
     msg = ''
     msg_type = 1
-    ephemeral = 0
+    ephemeral = False
 
     for o, a in opts:
         if o in ('-s', '--server'):
@@ -41,6 +41,7 @@ def main():
     except ConnectionRefusedError:
         print('Connection failed: Connection refused.')
         sys.exit(2)
+
     print(response)
 
 if __name__ == '__main__':
