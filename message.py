@@ -25,7 +25,7 @@ class Message():
         text = self.text == msg.text
         return routing and control and text
 
-    def from_packet(packet):
+    def from_packet(self, packet):
         '''
         Takes a packet, returns a message, without the server and port (those are not included in the packet
         header for our protocol). We *could* extract that information from the TCP header, but that doesn't
