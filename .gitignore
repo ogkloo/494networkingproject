@@ -3,3 +3,6 @@ bin/
 lib/
 include/
 share/
+.vscode
+*-code-workspace
+notes.md
