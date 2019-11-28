@@ -70,17 +70,21 @@ class ChatState():
             self.channels[channel].add_message(msg)
             return True
 
-    # https://stackoverflow.com/questions/18807079/selecting-elements-of-a-python-dictionary-greater-than-a-certain-value
-    # https://dateutil.readthedocs.io/en/stable/examples.html
-    def get_messages(self, msg):
+    # Oh god this needs so much testing
+    def get_messages(self, msg, request):
         # If the user has never logged in before, fail.
-        if msg.source not in self.channels:
+        if msg.source not in self.nicks:
             return False
         # We do not need to send requests after this, as this message will send the request.
         else:
             self.nicks[msg.source] = datetime.now()
-            # request_time = datetime.now()
-            # old_messages = dict((k,v) for k,v in self.channels[msg.target].messages.items() if k > request_time)
+            request_time = datetime.now()
+            channel = msg.target
+            messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k > request_time)
+            # Send back the number of messages
+            request.sendall(len(messages))
+            for message in messages:
+                request.sendall(message.assemble())
             return True
 
     # Fail if user does not exist (ie is not in known nicks)
