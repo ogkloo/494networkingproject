@@ -1,7 +1,10 @@
-import socketserver, time
+import socketserver
+import time
 from datetime import datetime
+
 from message import Message, from_packet
- 
+
+
 class Channel():
     def __init__(self, name, ephemeral):
         # Channel identifier
