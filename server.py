@@ -76,7 +76,7 @@ class ChatState():
         # We do not need to send requests after this, as this message will send the request.
         else:
             self.nicks[msg.source] = datetime.now()
-            request_time = datetime.now()
+            # request_time = datetime.now()
             # old_messages = dict((k,v) for k,v in self.channels[msg.target].messages.items() if k > request_time)
             return True
 

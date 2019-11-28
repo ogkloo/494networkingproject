@@ -13,3 +13,15 @@ after that, but do not break the API.
 * Potentially change message to use JSON.
 * Switch server to ThreadedTCP server.
 * Build in SSL support.
+
+## 19.11.28
+More progress! Setup VSCode. Very pleasurable editing experience actually.
+Actual code changes are mostly getting pylint shut up.
+Next thing should be to get the server to be able to send messages back to
+the client.
+Should follow:
+- Figure out which channel the client wants (if blank, all)
+- Figure out how many messages there are in that channel
+- Send back the number of messages
+- Send messages back 1 at a time
+Remember to handle errors correctly!

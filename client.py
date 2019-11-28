@@ -3,7 +3,7 @@ from message import Message
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:e', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type=', 'ephemeral'])
+        opts, _ = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:e', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type=', 'ephemeral'])
     except getopt.GetoptError as err:
         print(str(err))
         sys.exit(2)

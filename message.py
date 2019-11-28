@@ -57,14 +57,14 @@ class Message():
         if utf8len(self.source) < 21:
             byte_length = 21 - utf8len(self.source) 
             source = self.source.encode('utf-8')
-            for b in range(0, byte_length):
+            for _ in range(0, byte_length):
                 source += b'\0'
         else:
             raise RuntimeError('Nick too long')
         if utf8len(self.target) < 21:
             byte_length = 21 - utf8len(self.target) 
             target = self.target.encode('utf-8')
-            for b in range(0, byte_length):
+            for _ in range(0, byte_length):
                 target += b'\0'
         else:
             raise RuntimeError('Target nick or channel name too long')
