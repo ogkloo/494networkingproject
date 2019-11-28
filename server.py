@@ -1,6 +1,6 @@
 import socketserver, time
 from datetime import datetime
-from message import Message
+from message import Message, from_packet
  
 class Channel():
     def __init__(self, name, ephemeral):
@@ -34,7 +34,7 @@ class ChatState():
         self.nicks = {}
 
     def dump_channels(self):
-        for (name, info) in self.channels.items():
+        for (_, info) in self.channels.items():
             print(info)
 
     def join_channel(self, nick, channel):
@@ -69,7 +69,7 @@ class ChatState():
 
     # https://stackoverflow.com/questions/18807079/selecting-elements-of-a-python-dictionary-greater-than-a-certain-value
     # https://dateutil.readthedocs.io/en/stable/examples.html
-    def get_messages(self, since, nick, channel):
+    def get_messages(self, msg):
         # If the user has never logged in before, fail.
         if msg.source not in self.channels:
             return False
@@ -77,7 +77,7 @@ class ChatState():
         else:
             self.nicks[msg.source] = datetime.now()
             request_time = datetime.now()
-            old_messages = dict((k,v) for k,v in self.channels[msg.target].messages.items() if k > request_time)
+            # old_messages = dict((k,v) for k,v in self.channels[msg.target].messages.items() if k > request_time)
             return True
 
     # Fail if user does not exist (ie is not in known nicks)
@@ -150,13 +150,13 @@ class ChatState():
             pass
         else:
             err = (0).to_bytes(1, 'little')
-            self.request.sendall(err)
+            request.sendall(err)
 
 # To eventually be replaced by a threading version
 class RequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(4096)
-        msg = Message.from_packet(self.data)
+        msg = from_packet(self.data)
         print("{}:{} sent: {}".format(self.client_address[0], self.client_address[1], str(msg)))
         self.server.responder.respond(msg, self.request)
 

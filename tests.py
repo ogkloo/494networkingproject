@@ -4,7 +4,7 @@ Making other test scripts is fine, but please call them from here so that this r
 all tests that can be run quickly.
 '''
 
-from message import Message
+from message import Message, from_packet
 from datetime import datetime
 from server import Channel, ChatState, Server
 from os import fork, waitpid, kill
@@ -25,7 +25,7 @@ msg.time_stamp = datetime.now()
 
 print('# Assembly to packet from Message object')
 format_test('Message assembly', (msg.assemble() == b'anonymous\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00example\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02some message here'))
-format_test('Message reassembly', (Message.from_packet(msg.assemble()) == msg))
+format_test('Message reassembly', (from_packet(msg.assemble()) == msg))
 
 channel = Channel('idle', False)
 channel.join(msg.source)

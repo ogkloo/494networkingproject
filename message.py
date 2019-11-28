@@ -4,6 +4,24 @@ from datetime import datetime
 def utf8len(s):
     return len(s.encode('utf-8'))
 
+def from_packet(packet):
+    '''
+    Takes a packet, returns a message, without the server and port (those are not included in the packet
+    header for our protocol). We *could* extract that information from the TCP header, but that doesn't
+    seem particularly useful and I don't want to clutter the code with it.
+    '''
+    msg = Message()
+    msg.source = packet[0:21].decode('utf-8').strip('\0')
+    msg.target = packet[21:41].decode('utf-8').strip('\0')
+    msg.control_byte = packet[42]
+    msg.msg_type = msg.control_byte & 0x0f
+    msg.ephemeral = (msg.control_byte >> 4) & 0x01
+    msg.control_byte = (msg.ephemeral << 4 | msg.msg_type).to_bytes(1, 'little')
+    msg.text = packet[43:].decode('utf-8')
+    msg.server = ''
+    msg.port = 0
+    return msg
+
 class Message():
     def __init__(self, source='', target='', msg_type=1, ephemeral=False, text='', server='', port=0):
         self.source = source
@@ -25,23 +43,6 @@ class Message():
         text = self.text == msg.text
         return routing and control and text
 
-    def from_packet(self, packet):
-        '''
-        Takes a packet, returns a message, without the server and port (those are not included in the packet
-        header for our protocol). We *could* extract that information from the TCP header, but that doesn't
-        seem particularly useful and I don't want to clutter the code with it.
-        '''
-        msg = Message()
-        msg.source = packet[0:21].decode('utf-8').strip('\0')
-        msg.target = packet[21:41].decode('utf-8').strip('\0')
-        msg.control_byte = packet[42]
-        msg.msg_type = msg.control_byte & 0x0f
-        msg.ephemeral = (msg.control_byte >> 4) & 0x01
-        msg.control_byte = (msg.ephemeral << 4 | msg.msg_type).to_bytes(1, 'little')
-        msg.text = packet[43:].decode('utf-8')
-        msg.server = ''
-        msg.port = 0
-        return msg
 
     def __str__(self):
         return self.source + '>' + self.target + ':' + self.text + '/' + str(self.msg_type) + ',' + str(self.ephemeral) + '|' + str(self.control_byte) + '/' + self.server + ':' + str(self.port)
