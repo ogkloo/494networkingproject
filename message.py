@@ -33,7 +33,7 @@ class Message():
         self.text = text
         self.server = server
         self.port = port
-        self.time_stamp = datetime.now()
+        self.time_stamp = datetime.utcnow()
         self.control_byte = (self.ephemeral << 4 | self.msg_type).to_bytes(1, 'little')
 
     def __eq__(self, msg):
@@ -91,10 +91,15 @@ class Message():
             # If request is for get_messages, handle in a special way
             # Warning: Can block for a potentially long time.
             if self.msg_type == 5:
+                # Check to make sure we sent a valid request at all
+                validity = int.from_bytes(client.recv(4), 'little')
+                if validity == 4:
+                    return 4
                 num_messages = int.from_bytes(client.recv(8), byteorder='little')
                 response = []
-                for _ in range(1, num_messages):
+                for _ in range(0, num_messages):
                     response.append(from_packet(client.recv(4096)))
+                    client.sendall((1).to_bytes(1, 'little'))
             else:
                 response = client.recv(8)
             return response
