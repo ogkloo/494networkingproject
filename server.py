@@ -42,10 +42,9 @@ class ChatState():
 
     def join_channel(self, nick, channel):
         '''
-        We must add to the nicks list, but we don't want to send all messages
-        yet. Or maybe we do? Joining a channel probably shouldn't pull down
-        the entire message history, but instead allow the client the option
-        of doing this by issuing a get messages request.
+        Add user to global nicklist, as well as to the channel requested.
+        If the channel is invalid, they are added to the global nicklist
+        only.
         '''
         if nick not in self.nicks:
             self.nicks[nick] = None
@@ -62,16 +61,28 @@ class ChatState():
         else:
             return False
 
-    def send_message(self, channel, msg):
-        if channel not in self.channels:
+    def send_message(self, msg):
+        '''
+        Send message to the requested channel. If nick is not in the global
+        nicklist, add it to the global nicklist.
+        '''
+        if msg.source not in self.nicks:
+            self.nicks[msg.source] = None
+        if msg.target not in self.channels:
             return False
         else:
             msg.time_stamp = datetime.now()
-            self.channels[channel].add_message(msg)
+            self.channels[msg.target].add_message(msg)
             return True
 
     # Oh god this needs so much testing
     def get_messages(self, msg, request):
+        '''
+        Get messages for a specific user, for a specific channel.
+        Uses the msg object passed in to do this.
+        Returns False if the user has never logged into that channel before.
+        If channel is blank, should get private messages to that user.
+        '''
         # If the user has never logged in before, fail.
         if msg.source not in self.nicks:
             return False
@@ -80,10 +91,12 @@ class ChatState():
             self.nicks[msg.source] = datetime.now()
             request_time = datetime.now()
             channel = msg.target
-            messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k > request_time)
+            messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k < request_time)
             # Send back the number of messages
-            request.sendall(len(messages))
-            for message in messages:
+            request.sendall(len(messages).to_bytes(4, byteorder='little'))
+            print('Sending {} messages'.format(len(messages)))
+            for (_, message) in messages.items():
+                print('Sending ' + str(message))
                 request.sendall(message.assemble())
             return True
 
@@ -111,7 +124,7 @@ class ChatState():
                 return False
         # Send message to channel. Fails if channel does not exist.
         elif msg.msg_type == 1:
-            if self.send_message(msg.target, msg):
+            if self.send_message(msg):
                 # Send response code 4097: Message send successful 
                 request.sendall((4097).to_bytes(4, 'little'))
                 print('<{}> {} sent to #{}: {}'.format(msg.time_stamp, msg.source, msg.target, msg.text))
@@ -152,9 +165,10 @@ class ChatState():
                 request.sendall((5).to_bytes(4, 'little'))
                 print('Message failed: Sent to non-existent user at {}'.format(datetime.now()))
                 return False
+        # Get messages from a specific channel
         elif msg.msg_type == 5:
-            # self.get_messages(msg, self.request)
-            pass
+            print('Sending messages back')
+            self.get_messages(msg, request)
         else:
             err = (0).to_bytes(1, 'little')
             request.sendall(err)

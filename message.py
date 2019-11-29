@@ -6,9 +6,8 @@ def utf8len(s):
 
 def from_packet(packet):
     '''
-    Takes a packet, returns a message, without the server and port (those are not included in the packet
-    header for our protocol). We *could* extract that information from the TCP header, but that doesn't
-    seem particularly useful and I don't want to clutter the code with it.
+    Takes a packet, returns a message, without the server and port (those are 
+    not included in the packet header for our protocol).     
     '''
     msg = Message()
     msg.source = packet[0:21].decode('utf-8').strip('\0')
@@ -36,7 +35,8 @@ class Message():
 
     def __eq__(self, msg):
         '''
-        Important note: This does not compare target server and port, as those are not preserved in the packet.
+        Important note: This does not compare target server and port, as those 
+        are not preserved in the packet.
         '''
         routing = self.source == msg.source and self.target == msg.target
         control = self.msg_type == msg.msg_type and self.ephemeral == msg.ephemeral
@@ -52,7 +52,7 @@ class Message():
 
     def assemble(self):
         '''
-        Assembles a packet from the Message object.
+        Assembles a packet from the Message object. Enforces maximum sizes.
         '''
         if utf8len(self.source) < 21:
             byte_length = 21 - utf8len(self.source) 
@@ -75,15 +75,25 @@ class Message():
 
     def send(self):
         '''
-        Client-side message sending. Handles all the socket heavy lifting. Intended to be a VERY simple API.
-        This actually also enables bots to be built pretty easily I think, which is kinda cool.
-        Throws ConnectionRefusedError
+        Client-side message sending. Handles all the socket heavy lifting.
+        Blocks. Can potentially hang for some time if a large number of 
+        messages are retrieved.
+        Throws ConnectionRefusedError if server fails to connect. It is up to
+        clients to handle this error, as many responses are possible.
         '''
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             client.connect((self.server, self.port))
             client.sendall(self.assemble())
-            response = client.recv(8)
+            # If request is for get_messages, handle in a special way
+            # Warning: Can block for a potentially long time.
+            if self.msg_type == 5:
+                num_messages = int.from_bytes(client.recv(8), byteorder='little')
+                response = []
+                for _ in range(1, num_messages):
+                    response.append(from_packet(client.recv(4096)))
+            else:
+                response = client.recv(8)
             return response
         finally:
             client.close()
