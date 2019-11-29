@@ -92,22 +92,21 @@ class ChatState():
             request_time = datetime.now()
             channel = msg.target
             messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k < request_time)
+            # Need to standardize on a small set of error codes + success codes
             # Send back the number of messages
             request.sendall(len(messages).to_bytes(4, byteorder='little'))
-            print('Sending {} messages'.format(len(messages)))
             for (_, message) in messages.items():
-                print('Sending ' + str(message))
                 request.sendall(message.assemble())
             return True
 
     # Fail if user does not exist (ie is not in known nicks)
-    def send_message_to_user(self, target, msg):
-        if target not in self.nicks:
+    def send_message_to_user(self, msg):
+        if msg.target not in self.nicks:
             return False
-        elif target not in self.user_messages:
-            self.user_messages[target] = []
+        elif msg.target not in self.user_messages:
+            self.user_messages[msg.target] = []
         msg.time_stamp = datetime.now()
-        self.user_messages[target].append(msg)
+        self.user_messages[msg.target].append(msg)
         return True
 
     def respond(self, msg, request):
@@ -157,7 +156,7 @@ class ChatState():
         # Send private messages among users
         elif msg.msg_type == 4:
             print(self.nicks)
-            if self.send_message_to_user(msg.target, msg):
+            if self.send_message_to_user(msg):
                 request.sendall((4100).to_bytes(4, 'little'))
                 print('Message was sent at {}'.format(datetime.now()))
                 return True

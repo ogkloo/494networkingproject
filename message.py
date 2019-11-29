@@ -22,6 +22,9 @@ def from_packet(packet):
     return msg
 
 class Message():
+    '''
+    Main class exposing the API to both clients and servers.
+    '''
     def __init__(self, source='', target='', msg_type=1, ephemeral=False, text='', server='', port=0):
         self.source = source
         self.target = target
