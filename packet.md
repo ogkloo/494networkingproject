@@ -11,7 +11,7 @@ is a control byte. Both the first 2 sections are encoded using utf-8.
 
 ## Section 2: Control byte values
 
-```
+```none
 1 2 3 4      | 5           | 6            | 7 8
 Message type   Target type   Ephemerality   Reserved
 ```

@@ -95,6 +95,8 @@ class ChatState():
             self.nicks[msg.source] = datetime.utcnow()
             channel = msg.target
             try:
+                if channel == '':
+                    messages = dict((k,v) for k,v in self.user_messages[msg.source].items() if k >= request_time)
                 messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k >= request_time)
                 request.sendall((4099).to_bytes(4, 'little'))
             except KeyError:
@@ -184,7 +186,6 @@ class ChatState():
             err = (0).to_bytes(1, 'little')
             request.sendall(err)
 
-# To eventually be replaced by a threading version
 class RequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(4096)
@@ -195,7 +196,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 class Server():
     def __init__(self, host, port):
         self.responder = ChatState()
-        self.socket_server = socketserver.TCPServer((host, port), RequestHandler)
+        self.socket_server = socketserver.ThreadingTCPServer((host, port), RequestHandler)
         self.socket_server.responder = self.responder
 
     def serve_forever(self):
