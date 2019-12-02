@@ -1,5 +1,4 @@
 import socketserver
-import time
 from datetime import datetime
 
 from message import Message, from_packet
@@ -97,7 +96,8 @@ class ChatState():
             try:
                 if channel == '':
                     messages = dict((k,v) for k,v in self.user_messages[msg.source].items() if k >= request_time)
-                messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k >= request_time)
+                else:
+                    messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k >= request_time)
                 request.sendall((4099).to_bytes(4, 'little'))
             except KeyError:
                 request.sendall((4).to_bytes(4, 'little'))
