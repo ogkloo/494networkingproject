@@ -6,3 +6,4 @@ share/
 .vscode
 *-code-workspace
 notes.md
+socketplayground/socketbasics.c
