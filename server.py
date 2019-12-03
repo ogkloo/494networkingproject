@@ -1,5 +1,4 @@
 import socketserver
-import time
 from datetime import datetime
 
 from message import Message, from_packet
@@ -42,15 +41,24 @@ class ChatState():
 
     def join_channel(self, nick, channel):
         '''
-        We must add to the nicks list, but we don't want to send all messages
-        yet. Or maybe we do? Joining a channel probably shouldn't pull down
-        the entire message history, but instead allow the client the option
-        of doing this by issuing a get messages request.
+        Add user to global nicklist, as well as to the channel requested.
+        If the channel is invalid, they are added to the global nicklist
+        only.
+
+        A nick cannot deregister from the global list of nicks- those are
+        all nicks that have ever logged on.
         '''
         if nick not in self.nicks:
             self.nicks[nick] = None
         if channel in self.channels:
             self.channels[channel].join(nick)
+            return True
+        else:
+            return False
+    
+    def leave_channel(self, msg):
+        if msg.source in msg.target.nicks:
+            del msg.target.nicks[msg.source]
             return True
         else:
             return False
@@ -62,35 +70,69 @@ class ChatState():
         else:
             return False
 
-    def send_message(self, channel, msg):
-        if channel not in self.channels:
+    def send_message(self, msg):
+        '''
+        Send message to the requested channel. If nick is not in the global
+        nicklist, add it to the global nicklist.
+        '''
+        if msg.target not in self.channels:
             return False
         else:
-            msg.time_stamp = datetime.now()
-            self.channels[channel].add_message(msg)
+            msg.time_stamp = datetime.utcnow()
+            self.channels[msg.target].add_message(msg)
             return True
 
-    # https://stackoverflow.com/questions/18807079/selecting-elements-of-a-python-dictionary-greater-than-a-certain-value
-    # https://dateutil.readthedocs.io/en/stable/examples.html
-    def get_messages(self, msg):
+    def get_messages(self, msg, request):
+        '''
+        Get messages for a specific user, for a specific channel.
+        Uses the msg object passed in to do this.
+        Returns False if the user has never logged into that channel before.
+        If channel is blank, should get private messages to that user.
+        '''
         # If the user has never logged in before, fail.
-        if msg.source not in self.channels:
+        if msg.source not in self.nicks:
             return False
-        # We do not need to send requests after this, as this message will send the request.
+        # We do not need to send requests after this, as this message will send
+        # the request.
         else:
-            self.nicks[msg.source] = datetime.now()
-            # request_time = datetime.now()
-            # old_messages = dict((k,v) for k,v in self.channels[msg.target].messages.items() if k > request_time)
+            if self.nicks[msg.source] is None:
+                request_time = datetime.min
+            else:
+                request_time = self.nicks[msg.source]
+            self.nicks[msg.source] = datetime.utcnow()
+            channel = msg.target
+            try:
+                if channel == '' and msg.text != 'ALL':
+                    messages = dict((k,v) for k,v in self.user_messages[msg.source].items() if k >= request_time)
+                elif channel == '' and msg.text == 'ALL':
+                    messages = self.user_messages[msg.source]
+                elif channel != '' and msg.text == 'ALL':
+                    messages = self.channels[channel].messages
+                else:
+                    messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k >= request_time)
+                request.sendall((4099).to_bytes(4, 'little'))
+            except KeyError:
+                request.sendall((4).to_bytes(4, 'little'))
+                return False
+            # Need to standardize on a small set of error codes + success codes
+            # Send back the number of messages
+            request.sendall(len(messages).to_bytes(4, byteorder='little'))
+            for (_, message) in sorted(messages.items()):
+                request.sendall(message.assemble())
+                # Wait for ACK from client, if it fails and/or we get something
+                # unexpected back, we should stop sending messages immediately.
+                if int.from_bytes(request.recv(1), byteorder='little') != 1:
+                    break
             return True
 
-    # Fail if user does not exist (ie is not in known nicks)
-    def send_message_to_user(self, target, msg):
-        if target not in self.nicks:
+    # This is untested
+    def send_message_to_user(self, msg):
+        if msg.target not in self.nicks:
             return False
-        elif target not in self.user_messages:
-            self.user_messages[target] = []
-        msg.time_stamp = datetime.now()
-        self.user_messages[target].append(msg)
+        elif msg.target not in self.user_messages:
+            self.user_messages[msg.target] = {}
+        msg.time_stamp = datetime.utcnow()
+        self.user_messages[msg.target][msg.time_stamp] = msg
         return True
 
     def respond(self, msg, request):
@@ -107,7 +149,7 @@ class ChatState():
                 return False
         # Send message to channel. Fails if channel does not exist.
         elif msg.msg_type == 1:
-            if self.send_message(msg.target, msg):
+            if self.send_message(msg):
                 # Send response code 4097: Message send successful 
                 request.sendall((4097).to_bytes(4, 'little'))
                 print('<{}> {} sent to #{}: {}'.format(msg.time_stamp, msg.source, msg.target, msg.text))
@@ -121,7 +163,7 @@ class ChatState():
             if self.add_channel(msg.target, False):
                 # Send response code 4098: Create channel successful 
                 request.sendall((4098).to_bytes(4, 'little'))
-                print('{} created channel #{} at {}'.format(msg.source, msg.target, datetime.now()))
+                print('{} created channel #{} at {}'.format(msg.source, msg.target, datetime.utcnow()))
                 return True
             else:
                 request.sendall((3).to_bytes(4, 'little'))
@@ -131,7 +173,7 @@ class ChatState():
         elif msg.msg_type == 3:
             if self.add_channel(msg.target, True):
                 request.sendall((4099).to_bytes(4, 'little'))
-                print('{} created ephemeral channel #{} at {}'.format(msg.source, msg.target, datetime.now()))
+                print('{} created ephemeral channel #{} at {}'.format(msg.source, msg.target, datetime.utcnow()))
                 return True
             else:
                 request.sendall((4).to_bytes(4, 'little'))
@@ -140,22 +182,30 @@ class ChatState():
         # Send private messages among users
         elif msg.msg_type == 4:
             print(self.nicks)
-            if self.send_message_to_user(msg.target, msg):
+            if self.send_message_to_user(msg):
                 request.sendall((4100).to_bytes(4, 'little'))
-                print('Message was sent at {}'.format(datetime.now()))
+                print('Message was sent at {}'.format(datetime.utcnow()))
                 return True
             else:
                 request.sendall((5).to_bytes(4, 'little'))
-                print('Message failed: Sent to non-existent user at {}'.format(datetime.now()))
+                print('Message failed: Sent to non-existent user at {}'.format(datetime.utcnow()))
                 return False
+        # Get messages from a specific channel
         elif msg.msg_type == 5:
-            # self.get_messages(msg, self.request)
-            pass
+            self.get_messages(msg, request)
+            print('Sent back messages at {} '.format(datetime.utcnow()))
+        # Leave a channel
+        elif msg.msg_type == 15:
+            if self.leave_channel(msg):
+                request.sendall((4100).to_bytes(4, 'little'))
+                print('User {} left #{}'.format(msg.source, msg.target))
+            else:
+                request.sendall((6).to_bytes(4, 'little'))
+                print('User {} tried to leave #{}'.format(msg.source, msg.target))
         else:
             err = (0).to_bytes(1, 'little')
             request.sendall(err)
 
-# To eventually be replaced by a threading version
 class RequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(4096)
@@ -166,8 +216,12 @@ class RequestHandler(socketserver.BaseRequestHandler):
 class Server():
     def __init__(self, host, port):
         self.responder = ChatState()
-        self.socket_server = socketserver.TCPServer((host, port), RequestHandler)
+        self.socket_server = socketserver.ThreadingTCPServer((host, port), RequestHandler)
         self.socket_server.responder = self.responder
 
     def serve_forever(self):
-        self.socket_server.serve_forever()
+        try:
+            self.socket_server.serve_forever()
+        except KeyboardInterrupt:
+            self.socket_server.shutdown()
+            self.socket_server.server_close()

@@ -45,7 +45,11 @@ def main():
         print('Connection failed: Connection refused.')
         sys.exit(2)
 
-    print(response)
+    if msg_type == 5:
+        for message in response:
+            print(message)
+    else:
+        print(int.from_bytes(response, byteorder='little'))
 
 if __name__ == '__main__':
     main()

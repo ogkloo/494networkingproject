@@ -41,6 +41,10 @@ format_test('Join new channel', test_server.join_channel('anon', 'test_channel')
 print('# Live server and client tests')
 try:
     port = int(sys.argv[1])
+except IndexError:
+    port = 9999
+
+try:
     pid = fork()
 except OSError as err:
     print('Fork failed: {}'.format(err))
