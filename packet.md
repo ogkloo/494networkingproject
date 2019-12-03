@@ -106,6 +106,7 @@ All responses are sent little endian.
 * 2: Failed to send message, channel does not exist.
 * 3: Failed to create channel, channel already exists.
 * 4: Failed to send messages back, channel does not exist.
+* 5: Failed to part channel
 
 #### `0x00010000` - `0xffffffff`: Successes and other responses
 
@@ -113,6 +114,7 @@ All responses are sent little endian.
 * 4097: Send message successful
 * 4098: Create channel successful
 * 4099: Messages to follow
+* 4100: Channel successfully parted
 
 #### Messages
 

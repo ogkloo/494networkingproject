@@ -44,11 +44,21 @@ class ChatState():
         Add user to global nicklist, as well as to the channel requested.
         If the channel is invalid, they are added to the global nicklist
         only.
+
+        A nick cannot deregister from the global list of nicks- those are
+        all nicks that have ever logged on.
         '''
         if nick not in self.nicks:
             self.nicks[nick] = None
         if channel in self.channels:
             self.channels[channel].join(nick)
+            return True
+        else:
+            return False
+    
+    def leave_channel(self, msg):
+        if msg.source in msg.target.nicks:
+            del msg.target.nicks[msg.source]
             return True
         else:
             return False
@@ -65,8 +75,6 @@ class ChatState():
         Send message to the requested channel. If nick is not in the global
         nicklist, add it to the global nicklist.
         '''
-        if msg.source not in self.nicks:
-            self.nicks[msg.source] = None
         if msg.target not in self.channels:
             return False
         else:
@@ -94,8 +102,12 @@ class ChatState():
             self.nicks[msg.source] = datetime.utcnow()
             channel = msg.target
             try:
-                if channel == '':
+                if channel == '' and msg.text != 'ALL':
                     messages = dict((k,v) for k,v in self.user_messages[msg.source].items() if k >= request_time)
+                elif channel == '' and msg.text == 'ALL':
+                    messages = self.user_messages[msg.source]
+                elif channel != '' and msg.text == 'ALL':
+                    messages = self.channels[channel].messages
                 else:
                     messages = dict((k,v) for k,v in self.channels[channel].messages.items() if k >= request_time)
                 request.sendall((4099).to_bytes(4, 'little'))
@@ -113,14 +125,14 @@ class ChatState():
                     break
             return True
 
-    # Fail if user does not exist (ie is not in known nicks)
+    # This is untested
     def send_message_to_user(self, msg):
         if msg.target not in self.nicks:
             return False
         elif msg.target not in self.user_messages:
-            self.user_messages[msg.target] = []
+            self.user_messages[msg.target] = {}
         msg.time_stamp = datetime.utcnow()
-        self.user_messages[msg.target].append(msg)
+        self.user_messages[msg.target][msg.time_stamp] = msg
         return True
 
     def respond(self, msg, request):
@@ -182,6 +194,14 @@ class ChatState():
         elif msg.msg_type == 5:
             self.get_messages(msg, request)
             print('Sent back messages at {} '.format(datetime.utcnow()))
+        # Leave a channel
+        elif msg.msg_type == 15:
+            if self.leave_channel(msg):
+                request.sendall((4100).to_bytes(4, 'little'))
+                print('User {} left #{}'.format(msg.source, msg.target))
+            else:
+                request.sendall((6).to_bytes(4, 'little'))
+                print('User {} tried to leave #{}'.format(msg.source, msg.target))
         else:
             err = (0).to_bytes(1, 'little')
             request.sendall(err)
