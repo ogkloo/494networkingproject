@@ -25,7 +25,12 @@ class Channel():
 
 class ChatState():
     '''
-    Overall state of the server at a given time.
+    Overall state of the server at a given time. Includes a global store of
+    nicks that have been used before, all channels on the server, and a store
+    of private messsages between users.
+
+    By default, this server creates a non-ephemeral channel called #idle for
+    convenience.
     '''
     def __init__(self):
         # Channels on the server
@@ -36,8 +41,49 @@ class ChatState():
         self.nicks = {}
 
     def dump_channels(self):
+        '''
+        Debug function that dumps the entire list of channels.
+        '''
         for (_, info) in self.channels.items():
             print(info)
+    
+    def get_channels(self, msg, request):
+        # Fail validity check if user has never logged in
+        if msg.source not in self.nicks:
+            request.sendall((6).to_bytes(4, 'little'))
+            return False
+        else:
+            # Succeed otherwise
+            request.sendall((4101).to_bytes(4, 'little'))
+
+            # Send back number of channels to listen for
+            num_channels = len(self.channels)
+            request.sendall(num_channels.to_bytes(8, byteorder='little'))
+
+            for name in sorted(self.channels.keys()):
+                request.sendall(name.encode('utf-8'))
+                if int.from_bytes(request.recv(1), byteorder='little') != 1:
+                    break
+            return True
+
+    def get_nicks(self, msg, request):
+        # Fail validity check if user has never logged in
+        if msg.source not in self.nicks:
+            request.sendall((7).to_bytes(4, 'little'))
+            return False
+        else:
+            # Succeed otherwise
+            request.sendall((4102).to_bytes(4, 'little'))
+
+            # Send back number of channels to listen for
+            num_nicks = len(self.nicks)
+            request.sendall(num_nicks.to_bytes(8, byteorder='little'))
+
+            for (name, _) in sorted(self.nicks.items()):
+                request.sendall(name.encode('utf-8'))
+                if int.from_bytes(request.recv(1), byteorder='little') != 1:
+                    break
+            return True
 
     def join_channel(self, nick, channel):
         '''
@@ -57,13 +103,25 @@ class ChatState():
             return False
     
     def leave_channel(self, msg):
+        '''
+        Leaves/"parts" a channel. If the channel was ephemeral and no longer 
+        has anyone in it after the nick leaves, delete the channel. Otherwise,
+        leave it up.
+        '''
         if msg.source in self.channels[msg.target].nicks:
-            del self.channels[msg.target].nicks[msg.source]
+            channel = self.channels[msg.target]
+            del channel.nicks[msg.source]
+            if channel.ephemeral and len(channel.nicks) == 0:
+                del self.channels[msg.target]
             return True
         else:
             return False
 
     def add_channel(self, name, ephemeral):
+        '''
+        Adds a channel to the list of channels. Does not join a user to it,
+        the client should send a second message to accomplish that.
+        '''
         if name not in self.channels:
             self.channels[name] = Channel(name, ephemeral)
             return True
@@ -72,10 +130,11 @@ class ChatState():
 
     def send_message(self, msg):
         '''
-        Send message to the requested channel. If nick is not in the global
-        nicklist, add it to the global nicklist.
+        Send message to the requested channel. If nick is not in the channel,
+        do not send the message.
         '''
-        if msg.target not in self.channels:
+        channel = self.channels[msg.target]
+        if msg.target not in self.channels or msg.source not in channel.nicks:
             return False
         else:
             msg.time_stamp = datetime.utcnow()
@@ -86,6 +145,7 @@ class ChatState():
         '''
         Get messages for a specific user, for a specific channel.
         Uses the msg object passed in to do this.
+
         Returns False if the user has never logged into that channel before.
         If channel is blank, should get private messages to that user.
         '''
@@ -126,8 +186,12 @@ class ChatState():
                     break
             return True
 
-    # This is untested
     def send_message_to_user(self, msg):
+        '''
+        Sends a private message to a nick.
+        
+        Fails if the nick doesn't exist.
+        '''
         if msg.target not in self.nicks:
             return False
         elif msg.target not in self.user_messages:
@@ -195,6 +259,17 @@ class ChatState():
         elif msg.msg_type == 5:
             self.get_messages(msg, request)
             print('Sent back messages at {} '.format(datetime.utcnow()))
+        # List channels
+        elif msg.msg_type == 12:
+            if self.get_channels(msg, request):
+                print('User {} requested channel list at {}'.format(msg.source, datetime.utcnow()))
+            else:
+                print('Failed request for channel listing at {}'.format(datetime.utcnow()))
+        elif msg.msg_type == 13:
+            if self.get_nicks(msg, request):
+                print('User {} requested nick list at {}'.format(msg.source, datetime.utcnow()))
+            else:
+                print('Failed request for nick listing at {}'.format(datetime.utcnow()))
         # Leave a channel
         elif msg.msg_type == 15:
             if self.leave_channel(msg):
@@ -215,6 +290,9 @@ class RequestHandler(socketserver.BaseRequestHandler):
         self.server.responder.respond(msg, self.request)
 
 class Server():
+    '''
+    A chat server. Takes requests on a certain port and then handles them one by one.
+    '''
     def __init__(self, host, port):
         self.responder = ChatState()
         self.socket_server = socketserver.ThreadingTCPServer((host, port), RequestHandler)

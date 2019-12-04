@@ -62,16 +62,39 @@ all users in the channel sign off.
 ### 4 / Send message to user
 
 Specifies that the target field of the message is a user and not a channel.
-The server should deliver the message to only the specified user. This message
-type respects the ephemeral field.
+The server should deliver the message to only the specified user.
 
 ### 5 / Get messages
 
-Get all messages from the last time the user checked. If the text field includes
-a string of the form "Tue May 08 15:14:45 +0800 2012", it should be interpreted
-as the time to get messages from. This allows a user to request the history of
-a channel, even if they just joined, which facilitates usage across multiple
-devices.
+Get all messages from the last time the user checked.
+
+### 6 / Request persistent connection
+
+The user specified in the source field of the packet requests a persistent connection
+to the server. This persistent connection shall do the following things:
+
+1. Every 60 seconds, the server should check for a keepalive message. The keepalive
+message is a single '1', 1 byte long.
+
+2. Upon a message being sent to a channel the user is in, the connection will send
+the name of that channel across a 20 byte buffer. The client should be ready to
+receive this message at any given time. If this message fails, the server should
+treat it as a keepalive message failing. Upon receiving this, the client shall
+immediately Send an ACK back to the server in the form of a single byte '2'.
+If the client had messages from before the persistent connection was requested,
+it will not be notified of these.
+
+If the channel specified by (2) is '', this should be interpreted as a notification
+for new PMs.
+
+In general, the expected behavior from clients with persistent connections is that,
+upon receiving notifications, they will immediately issue a get messages request for
+the channel they were notified for. This is not, however, mandatory.
+
+The philosophy of this behavior is that the client and server should be as lazy as
+possible and expose an API to developers wishing to develop either, for any given
+implementation of either. If the client is particularly low power, this may be
+necessary.
 
 ## 12 / List channels
 
@@ -107,6 +130,8 @@ All responses are sent little endian.
 * 3: Failed to create channel, channel already exists.
 * 4: Failed to send messages back, channel does not exist.
 * 5: Failed to part channel
+* 6: Login for get_channels failed
+* 7: Login for get_nicks failed
 
 #### `0x00010000` - `0xffffffff`: Successes and other responses
 
@@ -115,10 +140,12 @@ All responses are sent little endian.
 * 4098: Create channel successful
 * 4099: Messages to follow
 * 4100: Channel successfully parted
+* 4101: Login for get_channels successful
+* 4102: Login for get_nicks successful
 
-#### Messages
+#### Generalized get request method
 
-Getting messages follows a format:
+Get requests follow a format:
 The first thing that happens is a check for validity. This ensures that a
 request is not made to a channel that does not exist. If this happens, the
 server will return 4 to the client as in accordance with the error codes. If

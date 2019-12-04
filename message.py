@@ -101,6 +101,17 @@ class Message():
                     current = client.recv(4096)
                     response.append(from_packet(current))
                     client.sendall((1).to_bytes(1, 'little'))
+            elif self.msg_type == 12 or self.msg_type == 13:
+                # Check to make sure we sent a valid request at all
+                validity = int.from_bytes(client.recv(4), 'little')
+                if validity == 4:
+                    return 4
+                num_messages = int.from_bytes(client.recv(8), byteorder='little')
+                response = []
+                for _ in range(0, num_messages):
+                    current = client.recv(20)
+                    response.append(current.decode('utf-8'))
+                    client.sendall((1).to_bytes(1, 'little'))
             else:
                 response = client.recv(8)
             return response
