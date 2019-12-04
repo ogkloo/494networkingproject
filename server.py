@@ -57,8 +57,8 @@ class ChatState():
             return False
     
     def leave_channel(self, msg):
-        if msg.source in msg.target.nicks:
-            del msg.target.nicks[msg.source]
+        if msg.source in self.channels[msg.target].nicks:
+            del self.channels[msg.target].nicks[msg.source]
             return True
         else:
             return False
@@ -116,7 +116,8 @@ class ChatState():
                 return False
             # Need to standardize on a small set of error codes + success codes
             # Send back the number of messages
-            request.sendall(len(messages).to_bytes(4, byteorder='little'))
+            request.sendall(len(messages).to_bytes(8, byteorder='little'))
+
             for (_, message) in sorted(messages.items()):
                 request.sendall(message.assemble())
                 # Wait for ACK from client, if it fails and/or we get something

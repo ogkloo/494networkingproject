@@ -98,7 +98,8 @@ class Message():
                 num_messages = int.from_bytes(client.recv(8), byteorder='little')
                 response = []
                 for _ in range(0, num_messages):
-                    response.append(from_packet(client.recv(4096)))
+                    current = client.recv(4096)
+                    response.append(from_packet(current))
                     client.sendall((1).to_bytes(1, 'little'))
             else:
                 response = client.recv(8)
