@@ -239,7 +239,6 @@ class ChatState():
         request.setblocking(False)
 
         sel = selectors.DefaultSelector()
-        sel.register(request, selectors.EVENT_READ)
         for (channel, notifier) in notifications:
             sel.register(notifier, selectors.EVENT_READ, channel)
         
@@ -247,7 +246,10 @@ class ChatState():
             events = sel.select()
             for key, mask in events:
                 if key.data is not None:
-                    request.sendall((key.data).to_bytes(20, 'little'))
+                    try:
+                        request.sendall((key.data).to_bytes(20, 'little'))
+                    except:
+                        break
                     sel.register(key.fileobj, mask, key.data)
         for (_, notifier) in notifications:
             notifier.close()
