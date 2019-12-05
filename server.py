@@ -1,8 +1,14 @@
 import socketserver
+import tempfile
+import shutil
+import atexit
+import selectors
 from datetime import datetime
+from os import pipe
 
 from message import Message, from_packet
 
+temp_dir = tempfile.mkdtemp()
 
 class Channel():
     def __init__(self, name, ephemeral):
@@ -12,6 +18,7 @@ class Channel():
         self.nicks = {}
         self.messages = {}
         self.ephemeral = ephemeral
+        self.notifiers = []
 
     def __str__(self):
         return self.name + ',' + str(self.ephemeral) + ',' + str(self.nicks) + ',' + str(self.messages)
@@ -22,6 +29,13 @@ class Channel():
     # Have never checked for updates here before
     def join(self, nick):
         self.nicks[nick] = None
+    
+    # Generates a fifo for use to a specific consumer thread
+    # Has to be a better way to do this right?
+    def register(self):
+        notifier = pipe()
+        self.notifiers.append(notifier)
+        return notifier
 
 class ChatState():
     '''
@@ -137,8 +151,12 @@ class ChatState():
         if msg.target not in self.channels or msg.source not in channel.nicks:
             return False
         else:
+            # Stamp message and add it to the global store of messsages
             msg.time_stamp = datetime.utcnow()
-            self.channels[msg.target].add_message(msg)
+            channel.add_message(msg)
+            # Send a notification to threads listening for this channel
+            with open(channel.notifier, 'w') as notifier:
+                notifier.write('1')
             return True
 
     def get_messages(self, msg, request):
@@ -199,6 +217,41 @@ class ChatState():
         msg.time_stamp = datetime.utcnow()
         self.user_messages[msg.target][msg.time_stamp] = msg
         return True
+    
+    def persistent_connection(self, msg, request):
+        '''
+        Handles persistent connection requests.
+        '''
+        nick = msg.source
+        # Get all channels the user is in
+        channels = []
+        for (_, channel) in self.channels.items():
+            if nick in channel.nicks:
+                channels.append(channel)
+        
+        # Register for notifications from them
+        notifications = []
+        for channel in channels:
+            notifications.append((channel, channel.register()))
+        
+        last_checkin = datetime.utcnow()
+
+        request.setblocking(False)
+
+        sel = selectors.DefaultSelector()
+        sel.register(request, selectors.EVENT_READ)
+        for (channel, notifier) in notifications:
+            sel.register(notifier, selectors.EVENT_READ, channel)
+        
+        while True:
+            events = sel.select()
+            for key, mask in events:
+                if key.data is not None:
+                    request.sendall((key.data).to_bytes(20, 'little'))
+                    sel.register(key.fileobj, mask, key.data)
+        for (_, notifier) in notifications:
+            notifier.close()
+        return False
 
     def respond(self, msg, request):
         # Join nick to a certain channel
@@ -304,3 +357,4 @@ class Server():
         except KeyboardInterrupt:
             self.socket_server.shutdown()
             self.socket_server.server_close()
+            shutil.rmtree(temp_dir)
