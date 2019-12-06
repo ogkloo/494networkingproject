@@ -2,17 +2,28 @@ import sys, getopt
 from message import Message
 
 def main():
+    '''
+    Parse the command line arguments
+    '''
     try:
         opts, _ = getopt.getopt(sys.argv[1:], 's:p:n:c:m:t:eh', ['server=', 'port=', 'nick=', 'channel=', 'msg=', 'type=', 'ephemeral', 'help'])
     except getopt.GetoptError as err:
         print(str(err))
         sys.exit(2)
 
+    '''The name of server or the IP number of the server'''
     server = 'localhost'
+    '''Port number of server'''
     port = 9999
+    '''User's nick name'''
     nick = 'anonymous'
+    '''Name of channel'''
     channel = 'idle'
+    '''Content of message'''
     msg = ''
+    '''0 join channel, 1 send message to channel, 2 create channel, 3 private channel 4 private message 
+    5 get information, 12 list channel, 13 get all users at that channel,  15 leave a channel
+    '''
     msg_type = 1
     ephemeral = False
 
