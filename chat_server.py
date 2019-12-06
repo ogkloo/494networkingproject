@@ -1,6 +1,7 @@
 from server import Server
 import sys
 
+'''Server wrapper'''
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print('Usage: chat_server <address> <port>')
