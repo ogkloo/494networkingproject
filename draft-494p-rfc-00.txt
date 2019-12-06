@@ -1,0 +1,300 @@
+CS494P
+Internet Draft
+Intended status: Class project specification 
+Expires: January 2020
+
+Asynchronous Subscription Chat Project
+draft-494p-rfc-00.txt
+
+1 Introduction
+2 Basic information
+  2.1 Conventions for running a server
+  2.2 Optional features overview
+  2.3 What is meant by ``asynchronous''
+3 Message specification
+  3.1 Message format
+    3.1.1 The control byte
+  3.2 Get requests
+  3.3 Message types
+    3.3.1 Join channel
+    3.3.2 Send message to channel
+    3.3.3 Create channel
+    3.3.4 Create ephemeral channel
+    3.3.5 Send message to user
+    3.3.6 Get messages
+    3.3.7 Request persistent connection
+    3.3.8 List channels
+    3.3.9 List nicks
+    3.3.10 Part channel
+4 Security considerations
+5 Future work
+
+1 Introduction
+This specification describes an asynchronous protocol for chat among multiple
+users via a relay node. Users are not required to be connected at any given
+time to receive messages, although an option feature for servers makes this 
+behavior possible.
+
+Users can join rooms, which work somewhat like ``threads'' on a forum or
+message board. They can then send and receive messages to and from those
+rooms. The behavior of receiving messages is designed to use minimal data
+when requests for messages in a room are issued.
+
+This protocol is meant as a simple, generally low-impact way for a client
+and server to communicate on a subscription basis.
+
+1.1 Notes on terminology
+``Nick'' and ``user'' are used interchangeably in this document.
+
+2 Basic information
+2.1 Conventions for running a server
+Although there are no set rules on where one can run a server, the standard
+port and protocol shall be a TCP/IP listener on port 9999. Further versions
+may allow optional features to expand this convention.
+
+2.2 Optional features overview
+There are 3 optional features, which may or may not be implemented. Clients
+should not rely on these features being implemented, but may take advantage
+of them if they are.
+
+A server may implement secure connections over SSL. If these connections are
+implemented, the convention shall be to run them over a TCP/IP listener on
+port 6767.
+
+A server may implement a persistent notification system. This is further
+described in the message specification, but the basic idea is that the
+server should receive a request from a client to establish such a
+connection, and then the client will keep the connection live after it is
+established. When messages on a channel are received, the client will be given
+a notification with the name of the channel the notification was received on.
+It is then up to the client as to what to do with this notification.
+
+A server may also implement ``ephemeral'' channels, which vanish after all
+users have parted from them.
+
+2.3 What is meant by ``asynchronous''
+``Asynchronous'' in this document refers to the fact that a client can send and
+receive messages at any time, including accessing the history of a channel from
+before that user joined. This was done for usability- Users of most chat
+services expect to be able to chat in real time and see messages from when they
+were not listening.
+
+3 Message specification
+``Messages'' here are defined as messages among users on a server.
+
+Messages are sent one at a time, and are always under 4KB in size (4096 bytes).
+The first 41 bytes are used as a header for metadata, and the remaining bytes
+are used for text by the user. Some message types make use of this field for
+options, but not all of them. In general, it contains the ``payload'' of the
+message.
+
+The first 20 bytes encode the sender's nick in utf-8 format. The second 20
+bytes encode the target, also in utf-8. If either of these fields are less
+than 20 bytes, it shall be padded with null terminator characters (ASCII 0) out
+to 20 bytes.
+
+The 41st byte is the ``control byte'', which includes extra information
+necessary to process the request, including the message type and ephemerality
+of the message.
+
+3.1.1 The control byte
+The control byte is a single byte, which uses 5 bits. They are used as follows:
+
+The 4 low order bits encode the message type. They are to be interpreted little
+endian as unsigned integers.
+
+The 5th low order bit encodes the ephemerality of the message.
+
+The remaining 3 high order bits are reserved for future usage.
+
+3.2 Get requests
+Get requests are somewhat special and require special handling.
+
+When a request for the messages in a channel, or for the nicks in a channel, or
+for a list of all channels on the server is issued, the server and the client
+must establish a connection for long enough to transfer a potentially very
+large number of messages. To facilitate this, the process is as follows:
+
+The first thing that happens is a check for validity of the request. This is
+somewhat different among different message types, but it's a basic check for
+the validity of the request. For instance, if a user is not in a channel, a
+request for the messages in that channel will fail. If this check fails, the
+server should return a 4 (see Error codes) and sever the connection. If it
+succeeds, the server should return a 4099. This response will be a 4 byte
+unsigned, little endian integer.
+
+If the validity check passes, the server must send the number of messages the
+client should prepare to receive along the buffer. This is an 8 byte unsigned,
+little endian integer.
+
+After this, the messages are sent one by one with an acknowledge in between.
+This is because after the message is received, the client is not expected to do
+anything in particular, even listen for further messages, and what it does may
+take an arbitrary amount of time before it responds. To avoid overwhelming the
+client, this acknowledgement is required. The acknowledge is simply a 1 byte,
+little endian, unsigned 1. The client can send back any other value to
+terminate the connection immediately.
+
+3.3 Message types
+Message types, encoded in the control byte, are the primary way a client
+can communicate its intentions.
+
+Each message type laid out here includes what its fields mean and what they
+should induce a server to do upon receiving them.
+
+3.3.1 Join channel
+The message type for this field is 0.
+
+The source of this message indicates the nick. The target indicates channel the
+user would like to join. The text is disregarded.
+
+Upon receiving this message, the server should register the user to its global
+list of nicks if it is not there already, and then to the specific channel the
+user requested to join, provided that it exists.
+
+If this succeeds, the server should send back 4096.
+If it fails, the server should send back 1.
+
+3.3.2 Send message to channel
+The message type for this field is 1.
+
+The source of this message indicates the nick. The target indicates channel to
+send the text field of the message to.
+
+Upon receiving this message, the server should add the user's message to that
+specific channel. The server should also have some way to keep track of when
+the message was sent, or which messages each user has received. If the channel
+does not exist, this message should fail.
+
+If it succeeds, it should return 4097.
+If it fails, it should return 2.
+
+3.3.3 Create channel
+The message type for this field is 2.
+
+The source of this message indicates the creator of the channel. The target
+indicates the name of the channel the user would like to create. The text
+field is disregarded.
+
+Upon receiving this message, the server should create the channel in its
+registry of channels. If the channel already exists, this message should fail.
+
+If it succeeds, the server should return 4098.
+If it fails, the server should return 3.
+
+3.3.4 Create ephemeral channel
+The message type for this field is 3.
+
+This is very similar to the previous command, and has the same behavior, but
+relates to an ephemeral channel.
+
+3.3.5 Send message to user
+The message type for this field is 4.
+
+The source of this message indicates the nick. The target indicates user to
+send the text field of the message to.
+
+Upon receiving this message, the server should add it to the target user's
+list of private messages, provided the user exists. If the user does not exist,
+this message should fail.
+
+If it succeeds, the server should return 4097.
+If it fails, the server should return 2.
+
+3.3.6 Get messages
+The message type for this field is 5.
+
+The source of this message indicates the nick requesting messages. The target 
+indicates channel to return messages from. The text is disregarded if it is
+not ``ALL''.
+
+If the target field is blank, this should be interpreted as requesting all
+private messages.
+
+By default, this request will return all ``new'' messages from that channel, or
+the messages that this particular nick has not seen before. If the text field of
+this message is ``ALL'', the server should return the entire history of that
+channel.
+
+This exchange follows the protocol for get requests.
+
+3.3.7 Request persistent connection
+Note that this message type is optional for servers to implement.
+
+The message type for this field is 6.
+
+The source indicates the nick to kep track of. The target and text fields are 
+ignored.
+
+Every 60 seconds, the server should check for a keepalive message. The keepalive
+message is a single '1', 1 byte long, unsigned, little endian.
+
+Upon a message being sent to a channel the user is in, the connection will send
+the name of that channel across a 20 byte buffer. The client should be ready to
+receive this message at any given time. If this message fails, the server should
+treat it as a keepalive message failing. Upon receiving this, the client shall
+immediately send an ACK back to the server in the form of a single byte '2'.
+If this acknowledge fails, this too is treated as a keepalive message failing.
+
+If the client had messages from before the persistent connection was requested,
+it will not be notified of these.
+
+If the channel specified is '', this should be interpreted as a notification
+for new PMs.
+
+The suggested, but not required, behavior of clients is that upon receiving a
+notification, they will issue a get messages request to that channel.
+
+The philosophy of this behavior is that the client and server should be as lazy as
+possible and expose an API to developers wishing to develop either, for any given
+implementation of either. If the client is particularly low power, this may be
+necessary.
+
+3.3.8 List channels
+The message type for this field is 12.
+
+The actual content of this message is ignored entirely. Optionally, the server
+may choose to send back only the channels the specified nick is joined to. For
+this reason it is recommended that clients send a blank message if they intend
+to get the full list of channels back.
+
+This message follows the get requests protocol.
+
+There is no reason this request should fail, except in the optional case. In
+this case, it should use 0 as the return code.
+
+3.3.9 List nicks
+The message type for this field is 13.
+
+The target field is to be interpreted as the the channel to get the nicks for.
+The other fields are ignored.
+
+If the target is blank, all users on the server are returned.
+
+This message follows the get requests protocol.
+
+3.3.10 Part channel
+The message type for this field is 15.
+
+The source is the nick trying to leave. The target is the channel they intend
+to leave. If the nick is not joined to that channel, this request should fail.
+If it is, they should be removed.
+
+If it succeeds, it should return 4100.
+If it fails, it should return 5.
+
+4 Security Considerations
+Currently, this specification has no protection outside of SSL against forgery,
+and without SSL it has no protection from inspection of packets. Further, we
+assume that clients will not lie. In general, this is not sustainable.
+
+5 Future work
+The format for messages is inefficient and frustrating. It would be useful to
+redo this format to preserve more data and avoid transmission of useless bits.
+
+Users do not currently "log in" to the server with anything more than their
+nickname. While convenient, this is extremely vulnerable to forgery from
+malicious users. Since state is built on top of this protocol (for gets issued
+to a server for messages), this becomes a problem in any unprotected system.
+A simple way to implement this might be for all requests to include a password
+or token to authenticate the user.
